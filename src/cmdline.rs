@@ -126,6 +126,7 @@ pub fn parse_args() -> Result<Config> {
                     Arg::with_name("image-url")
                         .short("u")
                         .long("image-url")
+                        .conflicts_with("image-file")
                         .value_name("URL")
                         .help("Manually specify the image URL")
                         .takes_value(true),
