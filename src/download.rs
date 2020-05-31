@@ -306,6 +306,36 @@ pub fn write_image(
     Ok(())
 }
 
+pub fn download_to_tempfile(url: &str, allow_insecure: bool, has_hash: bool) -> Result<File> {
+    if url.starts_with("http://") {
+        if !has_hash && !allow_insecure {
+            bail!("refusing to fetch HTTP Ignition config without --ignition-hash or --insecure-ignition")
+        }
+    } else if !url.starts_with("https://") {
+        bail!("unknown protocol for URL '{}'", url)
+    }
+
+    let mut f = tempfile::Builder::new()
+        .prefix("coreos-installer")
+        .suffix(".ign")
+        .tempfile()?
+        .into_file();
+
+    let client = new_http_client()?;
+    let mut resp = client
+        .get(url)
+        .send()
+        .chain_err(|| "sending Ignition config request")?
+        .error_for_status()
+        .chain_err(|| "fetching Ignition config URL")?;
+
+    copy(&mut resp, &mut f)?;
+    f.seek(SeekFrom::Start(0))
+        .chain_err(|| "rewinding downloaded Ignition config file")?;
+
+    Ok(f)
+}
+
 /// Format a size in bytes.
 fn format_bytes(count: u64) -> String {
     Byte::from_bytes(count.into())
